@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import pl.kurs.personapp.dto.PensionerDto;
 import pl.kurs.personapp.dto.PersonDto;
-
-import java.io.FileNotFoundException;
+import java.text.ParseException;
 
 @Component
 public class PensionerFactory implements IPersonFactory {
@@ -42,18 +41,17 @@ public class PensionerFactory implements IPersonFactory {
 
     @Override
     public Person createPersonFromCsvRow(String[] csvRow) {
-        Pensioner pensioner = new Pensioner();
-        pensioner.setPersonType(csvRow[0]);
-        pensioner.setFirstName(csvRow[1]);
-        pensioner.setLastName(csvRow[2]);
-        pensioner.setPesel(csvRow[3]);
-        pensioner.setHeightInCm(Double.parseDouble(csvRow[4]));
-        pensioner.setWeightInKg(Double.parseDouble(csvRow[5]));
-        pensioner.setEmailAddress(csvRow[6]);
-        pensioner.setPensionAmount(Double.parseDouble(csvRow[7]));
-        pensioner.setWorkedYears(Double.parseDouble(csvRow[8]));
-        return pensioner;
+            Pensioner pensioner = new Pensioner();
+            pensioner.setPersonType(csvRow[0]);
+            pensioner.setFirstName(csvRow[1]);
+            pensioner.setLastName(csvRow[2]);
+            pensioner.setPesel(csvRow[3]);
+            pensioner.setHeightInCm(Double.parseDouble(csvRow[4]));
+            pensioner.setWeightInKg(Double.parseDouble(csvRow[5]));
+            pensioner.setEmailAddress(csvRow[6]);
+            pensioner.setPensionAmount(Double.parseDouble(csvRow[7]));
+            pensioner.setWorkedYears(Double.parseDouble(csvRow[8]));
+            return pensioner;
+
     }
-
-
 }

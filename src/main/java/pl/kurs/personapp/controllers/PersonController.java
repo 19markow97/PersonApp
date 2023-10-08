@@ -2,8 +2,7 @@ package pl.kurs.personapp.controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +15,8 @@ import pl.kurs.personapp.dto.PersonDto;
 import pl.kurs.personapp.models.*;
 import pl.kurs.personapp.services.*;
 import java.text.ParseException;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/person")
@@ -30,16 +28,19 @@ public class PersonController {
     private EmployeePositionsService employeePositionsService;
     private CsvImportService csvImportService;
     private ImportStatusManagementService importStatusManagementService;
+    private ImportStatusService importStatusService;
 
     public PersonController(ModelMapper mapper, PersonManagementService personManagementService,
                             PersonFactoryService personFactoryService, EmployeePositionsService employeePositionsService,
-                            CsvImportService csvImportService, ImportStatusManagementService importStatusManagementService) {
+                            CsvImportService csvImportService, ImportStatusManagementService importStatusManagementService,
+                            ImportStatusService importStatusService) {
         this.mapper = mapper;
         this.personManagementService = personManagementService;
         this.personFactoryService = personFactoryService;
         this.employeePositionsService = employeePositionsService;
         this.csvImportService = csvImportService;
         this.importStatusManagementService = importStatusManagementService;
+        this.importStatusService = importStatusService;
     }
 
     @PostMapping
@@ -52,16 +53,14 @@ public class PersonController {
     }
 
     @GetMapping
-    public ResponseEntity<PageImpl<PersonDto>> getPeople(@RequestParam Map<String, String> parameters, @PageableDefault Pageable pageable) {
-        List<Person> allPeople = personManagementService.getAllPeople(parameters);
-        List<PersonDto> allPeopleDto = allPeople.stream()
-                .map(x -> {
-                    IPersonFactory personFactory = personFactoryService.getFactory(x.getPersonType());
-                    return mapper.map(x, personFactory.createPersonDto(x));
-                })
-                .collect(Collectors.toList());
-        PageImpl<PersonDto> personDtoPage = new PageImpl<>(allPeopleDto, pageable, allPeople.size());
-        return ResponseEntity.status(HttpStatus.OK).body(personDtoPage);
+    public ResponseEntity<Page<PersonDto>> getPeople(@RequestParam Map<String, String> parameters,
+                                                     @PageableDefault Pageable pageable) {
+        Page<Person> allPeople = personManagementService.getAllPeople(parameters, pageable);
+        Page<PersonDto> allPeopleDtoPage = allPeople.map(x -> {
+            IPersonFactory personFactory = personFactoryService.getFactory(x.getPersonType());
+            return mapper.map(x, personFactory.createPersonDto(x));
+        });
+        return ResponseEntity.ok(allPeopleDtoPage);
     }
 
     @PutMapping
@@ -71,51 +70,58 @@ public class PersonController {
         IPersonFactory matchingFactory = personFactoryService.getFactory(personToUpdate.get("personType"));
         personManagementService.edit(updatedPerson);
         PersonDto personDto = mapper.map(updatedPerson, matchingFactory.createPersonDto(updatedPerson));
-        return ResponseEntity.status(HttpStatus.CREATED).body(personDto);
+        return ResponseEntity.ok(personDto);
     }
 
 
-    @PutMapping(value = "position/{id}")
-    public ResponseEntity<EmployeeDto> manageEmployeePositions(@PathVariable("id") Long id, @RequestBody Map<String, String> positionUpdate) {
+    @PutMapping(value = "employee/{id}/position")
+    public ResponseEntity<EmployeeDto> manageEmployeePositions(@PathVariable("id") Long id,
+                                                               @RequestBody Map<String, String> positionUpdate) {
         Employee employee = (Employee) personManagementService.get(id);
         Position position = mapper.map(positionUpdate, Position.class);
         Employee editedEmployee = employeePositionsService.updatePositions(employee, position);
         personManagementService.edit(editedEmployee);
         System.out.println(position);
         EmployeeDto employeeDto = mapper.map(editedEmployee, EmployeeDto.class);
-        return ResponseEntity.status(HttpStatus.CREATED).body(employeeDto);
+        return ResponseEntity.ok(employeeDto);
     }
+
 
     @PostMapping("/import")
-    public ResponseEntity<ImportStatusSimpleDto> importCsv(@RequestParam("file") MultipartFile inputFile) {
-        try {
-            csvImportService.importCsvData(inputFile);
-            ImportStatus importStatus = csvImportService.getImportStatus();
-            ImportStatusSimpleDto statusSimpleDto = mapper.map(importStatus, ImportStatusSimpleDto.class);
-            return ResponseEntity.ok(statusSimpleDto);
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-        }
-        ImportStatus importStatus = csvImportService.getImportStatus();
-        ImportStatusSimpleDto statusSimpleDto = mapper.map(importStatus, ImportStatusSimpleDto.class);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(statusSimpleDto);
+    public CompletableFuture<ResponseEntity<ImportStatusSimpleDto>> importCsv(@RequestParam("file") MultipartFile inputFile) {
+        return csvImportService.importCsvData(inputFile)
+                .thenApply(importStatus -> {
+                    ImportStatusSimpleDto statusSimpleDto = mapper.map(importStatusService.getCurrentImportStatus(), ImportStatusSimpleDto.class);
+
+                    if (importStatus.getState() == ImportStatus.State.COMPLETED) {
+                        return ResponseEntity.ok(statusSimpleDto);
+                    } else if (importStatus.getState() == ImportStatus.State.FAILED) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(statusSimpleDto);
+                    } else {
+                        return ResponseEntity.ok(statusSimpleDto);
+                    }
+                })
+                .exceptionally(e -> {
+                    ImportStatusSimpleDto importStatusSimpleDto = new ImportStatusSimpleDto();
+                    importStatusSimpleDto.setState(ImportStatus.State.FAILED);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(importStatusSimpleDto);
+                });
     }
 
-    @GetMapping("/progress")
+    @GetMapping("import/progress")
     public ResponseEntity<ImportStatusDto> getCurrentImportState() {
-        ImportStatus currentStatus = csvImportService.getImportStatus();
+        ImportStatus currentStatus = importStatusService.getCurrentImportStatus();
         ImportStatusDto importStatusDto = mapper.map(currentStatus, ImportStatusDto.class);
         return ResponseEntity.ok(importStatusDto);
     }
 
-    @GetMapping("/history")
-    public ResponseEntity<PageImpl<ImportStatusDto>> getStatuses(@PageableDefault Pageable pageable) {
-        List<ImportStatus> importStatusesList = importStatusManagementService.getAll();
-        List<ImportStatusDto> importStatusDtos = importStatusesList.stream()
-                .map(x -> mapper.map(x, ImportStatusDto.class))
-                .collect(Collectors.toList());
-        PageImpl<ImportStatusDto> personDtoPage = new PageImpl<>(importStatusDtos, pageable, importStatusesList.size());
-        return ResponseEntity.status(HttpStatus.OK).body(personDtoPage);
+
+    @GetMapping("import/history")
+    public ResponseEntity<Page<ImportStatusDto>> getStatuses(@RequestParam Map<String, String> parameters,
+                                                             @PageableDefault Pageable pageable) {
+        Page<ImportStatus> importStatusesPage = importStatusManagementService.getAllStatuses(parameters, pageable);
+        Page<ImportStatusDto> importStatusDtosPage = importStatusesPage.map(x -> mapper.map(x, ImportStatusDto.class));
+        return ResponseEntity.ok(importStatusDtosPage);
     }
 
 }

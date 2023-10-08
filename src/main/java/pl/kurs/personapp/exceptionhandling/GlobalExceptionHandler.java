@@ -7,10 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import pl.kurs.personapp.exceptionhandling.exceptions.BadCsvImportException;
 import pl.kurs.personapp.exceptionhandling.exceptions.BadEntityException;
 import pl.kurs.personapp.exceptionhandling.exceptions.BadPositionException;
-import pl.kurs.personapp.exceptionhandling.exceptions.ImportLockedException;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -44,7 +43,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({BadEntityException.class, IllegalArgumentException.class, StaleObjectStateException.class,
-            BadPositionException.class, ImportLockedException.class})
+            BadPositionException.class, BadCsvImportException.class, NumberFormatException.class})
     public ResponseEntity<ExceptionResponseDto> handleBadEntityExceptionAndIllegalArgumentException(RuntimeException e) {
         ExceptionResponseDto exceptionResponseDto = new ExceptionResponseDto(
                 List.of(e.getMessage()),
@@ -54,7 +53,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exceptionResponseDto);
     }
 
-    @ExceptionHandler({ParseException.class, SQLIntegrityConstraintViolationException.class})
+    @ExceptionHandler({ParseException.class, SQLIntegrityConstraintViolationException.class, IOException.class})
     public ResponseEntity<ExceptionResponseDto> handleParseException(Exception e) {
         ExceptionResponseDto exceptionResponseDto = new ExceptionResponseDto(
                 List.of(e.getMessage()),

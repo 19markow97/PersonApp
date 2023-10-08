@@ -143,18 +143,4 @@ public abstract class Person implements Serializable {
         return Objects.hash(id, version, personType, firstName, lastName, pesel, heightInCm, weightInKg, emailAddress);
     }
 
-    @Override
-    public String toString() {
-        return "Person{" +
-                "id=" + id +
-                ", version=" + version +
-                ", personType='" + personType + '\'' +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", pesel='" + pesel + '\'' +
-                ", heightInCm=" + heightInCm +
-                ", weightInKg=" + weightInKg +
-                ", emailAddress='" + emailAddress + '\'' +
-                '}';
-    }
 }

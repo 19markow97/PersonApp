@@ -1,16 +1,10 @@
 package pl.kurs.personapp.models;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.opencsv.CSVReader;
-import com.opencsv.bean.ColumnPositionMappingStrategy;
-import com.opencsv.bean.CsvToBean;
+import org.apache.tomcat.util.json.ParseException;
 import org.springframework.stereotype.Component;
 import pl.kurs.personapp.dto.PersonDto;
 import pl.kurs.personapp.dto.StudentDto;
-
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.util.Arrays;
 
 
 @Component
@@ -38,7 +32,7 @@ public class StudentFactory implements IPersonFactory {
 
     @Override
     public String getSupportedType() {
-        return "STUDENT";
+        return "student";
     }
 
     @Override
@@ -48,19 +42,20 @@ public class StudentFactory implements IPersonFactory {
 
     @Override
     public Person createPersonFromCsvRow(String[] csvRow) {
-        Student student = new Student();
-        student.setPersonType(csvRow[0]);
-        student.setFirstName(csvRow[1]);
-        student.setLastName(csvRow[2]);
-        student.setPesel(csvRow[3]);
-        student.setHeightInCm(Double.parseDouble(csvRow[4]));
-        student.setWeightInKg(Double.parseDouble(csvRow[5]));
-        student.setEmailAddress(csvRow[6]);
-        student.setUniversityName(csvRow[7]);
-        student.setYearOfStudies(Double.parseDouble(csvRow[8]));
-        student.setStudyField(csvRow[9]);
-        student.setScholarship(Double.parseDouble(csvRow[10]));
-        return student;
+            Student student = new Student();
+            student.setPersonType(csvRow[0]);
+            student.setFirstName(csvRow[1]);
+            student.setLastName(csvRow[2]);
+            student.setPesel(csvRow[3]);
+            student.setHeightInCm(Double.parseDouble(csvRow[4]));
+            student.setWeightInKg(Double.parseDouble(csvRow[5]));
+            student.setEmailAddress(csvRow[6]);
+            student.setUniversityName(csvRow[7]);
+            student.setYearOfStudies(Double.parseDouble(csvRow[8]));
+            student.setStudyField(csvRow[9]);
+            student.setScholarship(Double.parseDouble(csvRow[10]));
+            return student;
+
     }
 
 }

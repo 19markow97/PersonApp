@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import pl.kurs.personapp.dto.EmployeeDto;
 import pl.kurs.personapp.dto.PersonDto;
-
 import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -53,30 +52,30 @@ public class EmployeeFactory implements IPersonFactory {
     }
 
     @Override
-    public Person createPersonFromCsvRow(String[] csvRow) throws ParseException {
-        Employee employee = new Employee();
-        employee.setPersonType(csvRow[0]);
-        employee.setFirstName(csvRow[1]);
-        employee.setLastName(csvRow[2]);
-        employee.setPesel(csvRow[3]);
-        employee.setHeightInCm(Double.parseDouble(csvRow[4]));
-        employee.setWeightInKg(Double.parseDouble(csvRow[5]));
-        employee.setEmailAddress(csvRow[6]);
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        employee.setEmploymentStart(new Date(dateFormat.parse(csvRow[7]).getTime()));
-        employee.setCurrentPosition(csvRow[8]);
-        employee.setCurrentSalary(Double.parseDouble(csvRow[9]));
-        Set<Position> positions = new LinkedHashSet<>();
-        Position position = new Position();
-        position.setName(csvRow[8]);
-        position.setSalary(Double.parseDouble(csvRow[9]));
-        Date startOfWork = new Date(dateFormat.parse(csvRow[7]).getTime());
-        position.setStartOfWork(startOfWork);
-        positions.add(position);
-        employee.setPositions(positions);
-        return employee;
-    }
+    public Person createPersonFromCsvRow(String[] csvRow) throws ParseException, NumberFormatException {
+            Employee employee = new Employee();
+            employee.setPersonType(csvRow[0]);
+            employee.setFirstName(csvRow[1]);
+            employee.setLastName(csvRow[2]);
+            employee.setPesel(csvRow[3]);
+            employee.setHeightInCm(Double.parseDouble(csvRow[4]));
+            employee.setWeightInKg(Double.parseDouble(csvRow[5]));
+            employee.setEmailAddress(csvRow[6]);
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            employee.setEmploymentStart(new Date(dateFormat.parse(csvRow[7]).getTime()));
+            employee.setCurrentPosition(csvRow[8]);
+            employee.setCurrentSalary(Double.parseDouble(csvRow[9]));
+            Set<Position> positions = new LinkedHashSet<>();
+            Position position = new Position();
+            position.setName(csvRow[8]);
+            position.setSalary(Double.parseDouble(csvRow[9]));
+            Date startOfWork = new Date(dateFormat.parse(csvRow[7]).getTime());
+            position.setStartOfWork(startOfWork);
+            positions.add(position);
+            employee.setPositions(positions);
+            return employee;
 
+    }
 }
 
 

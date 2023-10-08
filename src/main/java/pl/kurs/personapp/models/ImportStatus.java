@@ -17,12 +17,12 @@ public class ImportStatus implements Serializable {
     private State state;
     private Instant startTime;
     private Instant endTime;
-    private int processedRows;
+    private Long processedRows;
 
     public ImportStatus() {
     }
 
-    public ImportStatus(State state, Instant startTime, Instant endTime, int processedRows) {
+    public ImportStatus(State state, Instant startTime, Instant endTime, Long processedRows) {
         this.state = state;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -61,11 +61,11 @@ public class ImportStatus implements Serializable {
         this.endTime = endTime;
     }
 
-    public int getProcessedRows() {
+    public Long getProcessedRows() {
         return processedRows;
     }
 
-    public void setProcessedRows(int processedRows) {
+    public void setProcessedRows(Long processedRows) {
         this.processedRows = processedRows;
     }
 
@@ -74,7 +74,7 @@ public class ImportStatus implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ImportStatus that = (ImportStatus) o;
-        return processedRows == that.processedRows && Objects.equals(id, that.id) && state == that.state && Objects.equals(startTime, that.startTime) && Objects.equals(endTime, that.endTime);
+        return Objects.equals(id, that.id) && state == that.state && Objects.equals(startTime, that.startTime) && Objects.equals(endTime, that.endTime) && Objects.equals(processedRows, that.processedRows);
     }
 
     @Override
