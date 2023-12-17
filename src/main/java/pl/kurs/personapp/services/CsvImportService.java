@@ -13,9 +13,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -24,49 +24,48 @@ public class CsvImportService {
 
     private final PersonFactoryService personFactoryService;
     private final PersonManagementService personManagementService;
-    private final ImportStatus importStatus;
-    private final ImportStatusService importStatusService;
     private final ImportStatusManagementService importStatusManagementService;
-    private final Lock importLock = new ReentrantLock();
+    private static final Lock importLock = new ReentrantLock();
+    private final Map<String, ImportStatus> activeImports = new ConcurrentHashMap<>();
 
     public CsvImportService(PersonFactoryService personFactoryService, PersonManagementService personManagementService,
-                            ImportStatus importStatus, ImportStatusService importStatusService,
                             ImportStatusManagementService importStatusManagementService) {
         this.personFactoryService = personFactoryService;
         this.personManagementService = personManagementService;
-        this.importStatus = importStatus;
-        this.importStatusService = importStatusService;
         this.importStatusManagementService = importStatusManagementService;
     }
 
-    public CompletableFuture<ImportStatus> importCsvData(MultipartFile file) {
-        CompletableFuture<ImportStatus> future = new CompletableFuture<>();
+    public String initiateCsvImport(MultipartFile file) {
+        String currentImportId = UUID.randomUUID().toString();
         if (importLock.tryLock()) {
-            ImportStatus currentImportStatus = new ImportStatus();
-            currentImportStatus.setState(ImportStatus.State.RUNNING);
-            currentImportStatus.setStartTime(Instant.now());
-            currentImportStatus.setProcessedRows(0L);
-            try {
-                List<Person> people = performCsvImport(file, currentImportStatus);
-                personManagementService.saveAll(people);
-                currentImportStatus.setEndTime(Instant.now());
-                currentImportStatus.setState(ImportStatus.State.COMPLETED);
-                future.complete(importStatus);
-                importStatusService.updateImportStatus(currentImportStatus);
-            } catch (RuntimeException e) {
-                currentImportStatus.setState(ImportStatus.State.FAILED);
-                currentImportStatus.setEndTime(Instant.now());
-                currentImportStatus.setProcessedRows(0L);
-                importStatusService.updateImportStatus(currentImportStatus);
-                future.completeExceptionally(e);
-            } finally {
-                importStatusManagementService.add(currentImportStatus);
-                importLock.unlock();
-            }
+            CompletableFuture.runAsync(() -> {
+                try {
+                    ImportStatus currentImportStatus = new ImportStatus();
+                    currentImportStatus.setState(ImportStatus.State.RUNNING);
+                    currentImportStatus.setStartTime(Instant.now());
+                    currentImportStatus.setProcessedRows(0L);
+                    activeImports.put(currentImportId, currentImportStatus);
+
+                    try {
+                        List<Person> people = performCsvImport(file, currentImportStatus);
+                        personManagementService.saveAll(people);
+                        currentImportStatus.setEndTime(Instant.now());
+                        currentImportStatus.setState(ImportStatus.State.COMPLETED);
+                        importStatusManagementService.add(currentImportStatus);
+                    } catch (RuntimeException e) {
+                        currentImportStatus.setState(ImportStatus.State.FAILED);
+                        currentImportStatus.setEndTime(Instant.now());
+                        currentImportStatus.setProcessedRows(0L);
+                        importStatusManagementService.add(currentImportStatus);
+                    }
+                } finally {
+                    importLock.unlock();
+                }
+            });
         } else {
             throw new IllegalStateException("Other import currently takes place");
         }
-        return future;
+        return currentImportId;
     }
 
     private List<Person> performCsvImport(MultipartFile file, ImportStatus importStatus) {
@@ -79,17 +78,24 @@ public class CsvImportService {
                     String type = row[0];
                     IPersonFactory matchingFactory = personFactoryService.getFactory(type);
                     Person person = matchingFactory.createPersonFromCsvRow(row);
+                    Thread.sleep(15000);
                     if (person != null) {
                         people.add(person);
                         importStatus.setProcessedRows(importStatus.getProcessedRows() + 1);
                     }
                 }
             }
-        } catch (IOException | ParseException | NumberFormatException e ) {
+        } catch (IOException | ParseException | NumberFormatException | InterruptedException e) {
             throw new BadCsvImportException("Incorrect CSV file");
         }
 
         return people;
     }
+
+
+    public ImportStatus getImportStatusById(String id) {
+        return activeImports.get(id);
+    }
+
 
 }

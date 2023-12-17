@@ -69,6 +69,7 @@ public class ImportStatus implements Serializable {
         this.processedRows = processedRows;
     }
 
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -1,16 +1,25 @@
 package pl.kurs.personapp.dto;
 
-import pl.kurs.personapp.models.ImportStatus;
 
 public class ImportStatusSimpleDto {
 
-    private ImportStatus.State state;
+    private String currentImportId;
 
-    public ImportStatus.State getState() {
-        return state;
+    private String message;
+
+    public String getCurrentImportId() {
+        return currentImportId;
     }
 
-    public void setState(ImportStatus.State state) {
-        this.state = state;
+    public void setCurrentImportId(String currentImportId) {
+        this.currentImportId = currentImportId;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

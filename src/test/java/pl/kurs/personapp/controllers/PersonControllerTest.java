@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import pl.kurs.personapp.models.Employee;
 import pl.kurs.personapp.models.ImportStatus;
@@ -25,7 +26,6 @@ import pl.kurs.personapp.services.*;
 import java.sql.Date;
 import java.time.Instant;
 import java.util.LinkedHashSet;
-import java.util.concurrent.CompletableFuture;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -151,19 +151,15 @@ class PersonControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-
     @Test
     public void shouldImportCsvSuccessfully() throws Exception {
 
         String csvContent = "pensioner,Lech,Pidarowski,66071041333,175,102,pidor@interia.pl,3600,55";
         MockMultipartFile file = new MockMultipartFile("file", "test.csv", MediaType.TEXT_PLAIN_VALUE, csvContent.getBytes());
 
-        CompletableFuture<ImportStatus> importResult = csvImportService.importCsvData(file);
-
-        importResult.join();
-
         mockMvc.perform(MockMvcRequestBuilders.multipart("/api/person/import").file(file))
                 .andExpect(MockMvcResultMatchers.status().isOk());
+
     }
 
 

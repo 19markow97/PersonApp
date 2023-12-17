@@ -88,29 +88,23 @@ public class PersonController {
 
 
     @PostMapping("/import")
-    public CompletableFuture<ResponseEntity<ImportStatusSimpleDto>> importCsv(@RequestParam("file") MultipartFile inputFile) {
-        return csvImportService.importCsvData(inputFile)
-                .thenApply(importStatus -> {
-                    ImportStatusSimpleDto statusSimpleDto = mapper.map(importStatusService.getCurrentImportStatus(), ImportStatusSimpleDto.class);
-
-                    if (importStatus.getState() == ImportStatus.State.COMPLETED) {
-                        return ResponseEntity.ok(statusSimpleDto);
-                    } else if (importStatus.getState() == ImportStatus.State.FAILED) {
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(statusSimpleDto);
-                    } else {
-                        return ResponseEntity.ok(statusSimpleDto);
-                    }
-                })
-                .exceptionally(e -> {
-                    ImportStatusSimpleDto importStatusSimpleDto = new ImportStatusSimpleDto();
-                    importStatusSimpleDto.setState(ImportStatus.State.FAILED);
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(importStatusSimpleDto);
-                });
+    public ResponseEntity<ImportStatusSimpleDto> importCsv(@RequestParam("file") MultipartFile inputFile) {
+        try {
+            String currentImportStatusId = csvImportService.initiateCsvImport(inputFile);
+            ImportStatusSimpleDto importStatusSimpleDto = new ImportStatusSimpleDto();
+            importStatusSimpleDto.setCurrentImportId(currentImportStatusId);
+            importStatusSimpleDto.setMessage("Import started");
+            return ResponseEntity.ok(importStatusSimpleDto);
+        } catch (IllegalStateException e) {
+            ImportStatusSimpleDto importStatusSimpleDto = new ImportStatusSimpleDto();
+            importStatusSimpleDto.setMessage("Import failed");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(importStatusSimpleDto);
+        }
     }
 
-    @GetMapping("import/progress")
-    public ResponseEntity<ImportStatusDto> getCurrentImportState() {
-        ImportStatus currentStatus = importStatusService.getCurrentImportStatus();
+    @GetMapping("import/progress/{id}")
+    public ResponseEntity<ImportStatusDto> getCurrentImportState(@PathVariable("id") String id) {
+        ImportStatus currentStatus = csvImportService.getImportStatusById(id);
         ImportStatusDto importStatusDto = mapper.map(currentStatus, ImportStatusDto.class);
         return ResponseEntity.ok(importStatusDto);
     }
